@@ -1,77 +1,77 @@
 # Maintainer: jrdn <r7Iq7R1c@protonmail.com>
 
 pkgname=openlinkhub-bin
-_pkgnamesrc=OpenLinkHub
-_location=/opt/$_pkgnamesrc
-_tag=0.3.8
-pkgver=0.3.8
-pkgrel=1
+_upstreamname=OpenLinkHub
+_binlocation=/usr/bin/"${pkgname%-*}"
+_applocation=/opt/"${pkgname%-*}"
+pkgver=0.4.0
+pkgrel=2
 pkgdesc="Open source Linux interface for iCUE LINK Hub and other Corsair AIOs, Hubs. Binary for amd64/x86_64"
 arch=('x86_64')
 url="https://github.com/jurkovic-nikola/OpenLinkHub"
 license=('GPL3')
 groups=()
-depends=('systemd')
-makedepends=() 
-provides=("openlinkhub")
-conflicts=("openlinkhub" )
-replaces=("openlinkhub")
+depends=('systemd' 'lm_sensors' 'i2c-tools')
+makedepends=('systemd') 
+provides=("${pkgname%-*}")
+conflicts=("${pkgname%-*}")
+replaces=()
 backup=()
 options=()
-install=$_pkgnamesrc.install
+install="${pkgname%-*}".install
 source=(
-	https://github.com/jurkovic-nikola/${_pkgnamesrc}/releases/download/${pkgver}/${_pkgnamesrc}_${pkgver}_amd64.tar.gz
-	$_pkgnamesrc.install
-	$_pkgnamesrc.sysusers
-	$_pkgnamesrc.tmpfiles
-	$_pkgnamesrc.service
+	"https://github.com/jurkovic-nikola/${_upstreamname}/releases/download/${pkgver}/${_upstreamname}_${pkgver}_amd64.tar.gz"
+	"${pkgname%-*}".install
+	"${pkgname%-*}".sysusers
+	"${pkgname%-*}".service
 )
-noextract=()
-sha256sums=('73e9549dd192c10699ed07ca2024546a0395407fb62e18386697b10c010b2db5'
-            'a541e655f649d43250481394549ef8dc0192fdd1c6b155866f57adce9f172d7c'
-            '1222f0ea7dc963f3e09db814bacc71d2179232ad582fab8ad0e36cb8a9e69141'
-            '18f1759e8642b2be24a11337eca16f148f80bee88b3270a3bb62c7376b428090'
-            'cc4c09d90f3c26db239ed159b4b65ddf3ec7b68c044e61ee42c77a1a5fb659de')
+noextract=("${_upstreamname}_${pkgver}_amd64.tar.gz")
+sha256sums=('a2b760d8eb4363a929c57b621dfeebb3593e287984464a44d8bbf8976f886a14'
+            'eb4d6d32e69feeb6892ea2f5c0beb12a5abec06383d79fbe308c19c7c9287c85'
+            '5aab700df0d7791722c2723ece369df916e07184407e4778d25a2dd934f12681'
+            '430d8196074127257b6b823d7ae72eaa9fedf90f55c70bc121a9467e7648dcc5')
 
 prepare() {
-	cd $_pkgnamesrc
+	mkdir -p "${pkgname%-*}"
+	tar -xvzf "${_upstreamname}_${pkgver}_amd64.tar.gz" -C "${pkgname%-*}" --strip-components=1
+	
+	cd "${pkgname%-*}"
 
 	## Look for CORSAIR Controller Device and create UDEV rule file
-	## Copied nearly verbatim from upstream ./install.sh
 
 	lsusb -d 1b1c: | while read -r line; do
 		ids=$(echo "$line" | awk '{print $6}')
 		vendor_id=$(echo "$ids" | cut -d':' -f1)
 		device_id=$(echo "$ids" | cut -d':' -f2)
-		cat > $_pkgnamesrc-udev.rules <<- EOM
+		cat > "${pkgname%-*}.rules" <<- EOM
 		KERNEL=="hidraw*", SUBSYSTEMS=="usb", ATTRS{idVendor}=="$vendor_id", ATTRS{idProduct}=="$device_id", MODE="0666"
 		EOM
 	done
 }
 
 package() {
+	## Install users
+	install -Dm 644 "${pkgname%-*}.sysusers" "$pkgdir/usr/lib/sysusers.d/${pkgname%-*}.conf"
 
-	## Install package README and LICENSE files
-	install -Dm 644 $_pkgnamesrc.sysusers "${pkgdir}"/usr/lib/sysusers.d/$_pkgnamesrc.conf
-
-	## Install parent folders
-	install -Dm 644 $_pkgnamesrc.tmpfiles "${pkgdir}"/usr/lib/tmpfiles.d/$_pkgnamesrc.conf
-
-	## Install systemd service unit
-	install -Dm 644 "${_pkgnamesrc}.service" "${pkgdir}"/usr/lib/systemd/system/$_pkgnamesrc.service
+	## Install folders
+	install -d -m 755 "${pkgdir}$_applocation/"{database,static,web}
 
 	## Install systemd service unit
-	install -Dm 644 "${_pkgnamesrc}/${_pkgnamesrc}-udev.rules" "${pkgdir}"/etc/udev/rules.d/99-$_pkgnamesrc.rules
+	install -Dm 644 "${pkgname%-*}.service" "$pkgdir/usr/lib/systemd/system/${pkgname%-*}.service"
+
+	## Install udev rules
+	install -Dm 644 "${pkgname%-*}/${pkgname%-*}.rules" "$pkgdir/etc/udev/rules.d/${pkgname%-*}.rules"
 
 	## Install package executable
-	install -Dm 755 "${_pkgnamesrc}/${_pkgnamesrc}" "${pkgdir}"$_location/$_pkgnamesrc
+	install -Dm 755 "${pkgname%-*}/$_upstreamname" "$pkgdir$_binlocation"
 
-	## Install program data
-	cp -r "${_pkgnamesrc}"/database/ "${pkgdir}"$_location/database/
-	cp -r "${_pkgnamesrc}"/static/ "${pkgdir}"$_location/static/
-	cp -r "${_pkgnamesrc}"/web/ "${pkgdir}"$_location/web/
+	## Install package data
+	cp -r "${pkgname%-*}"/database/* "${pkgdir}"$_applocation/database/
+	cp -r "${pkgname%-*}"/static/* "${pkgdir}"$_applocation/static/
+	cp -r "${pkgname%-*}"/web/* "${pkgdir}"$_applocation/web/
 
-	chmod -R 755 "${pkgdir}"$_location
-	chown -R openlinkhub:root "${pkgdir}"$_location
-
+	## Update permissions
+	chmod 755 "${pkgdir}"$_binlocation
+	chmod -R 755 "${pkgdir}"$_applocation
+	chown -R 473:473 "${pkgdir}"$_applocation
 }

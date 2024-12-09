@@ -1,5 +1,7 @@
 OpenLinkHub/
+openlinkhub/
 src/
 pkg/
 *.tar.zst
 *.tar.gz
+.gitignore
