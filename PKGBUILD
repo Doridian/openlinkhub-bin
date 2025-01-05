@@ -4,8 +4,8 @@ pkgname=openlinkhub-bin
 _upstreamname=OpenLinkHub
 _binlocation=/usr/bin/"${pkgname%-*}"
 _applocation=/opt/"${pkgname%-*}"
-pkgver=0.4.2
-pkgrel=3
+pkgver=0.4.5
+pkgrel=4
 pkgdesc="Open source Linux interface for iCUE LINK Hub and other Corsair AIOs, Hubs. [Current Binary Release - amd64/x86_64]"
 arch=('x86_64')
 url="https://github.com/jurkovic-nikola/OpenLinkHub"
@@ -16,7 +16,9 @@ makedepends=('systemd' 'tar')
 provides=("${pkgname%-*}")
 conflicts=("${pkgname%-*}")
 replaces=()
-backup=()
+backup=(
+	"etc/udev/rules.d/99-openlinkhub.rules"
+	)
 options=()
 install="${pkgname%-*}".install
 source=(
@@ -26,27 +28,14 @@ source=(
 	"${pkgname%-*}".service
 )
 noextract=("${_upstreamname}_${pkgver}_amd64.tar.gz")
-sha256sums=('5bb650cbb511db637625aa8c3875f35ef0068791ab35f907de013c860a8d789f'
+sha256sums=('b87fff5009f7287df684969619446986b02a689333748868dc028d987659036c'
             'eb4d6d32e69feeb6892ea2f5c0beb12a5abec06383d79fbe308c19c7c9287c85'
             '5aab700df0d7791722c2723ece369df916e07184407e4778d25a2dd934f12681'
             '430d8196074127257b6b823d7ae72eaa9fedf90f55c70bc121a9467e7648dcc5')
 
 prepare() {
 	mkdir -p "${pkgname%-*}"
-	tar -xvzf "${_upstreamname}_${pkgver}_amd64.tar.gz" -C "${pkgname%-*}" --strip-components=1
-	
-	cd "${pkgname%-*}"
-
-	## Look for CORSAIR Controller Device and create UDEV rule file
-
-	lsusb -d 1b1c: | while read -r line; do
-		ids=$(echo "$line" | awk '{print $6}')
-		vendor_id=$(echo "$ids" | cut -d':' -f1)
-		device_id=$(echo "$ids" | cut -d':' -f2)
-		cat > "${pkgname%-*}.rules" <<- EOM
-		KERNEL=="hidraw*", SUBSYSTEMS=="usb", ATTRS{idVendor}=="$vendor_id", ATTRS{idProduct}=="$device_id", MODE="0666"
-		EOM
-	done
+	tar -xzf "${_upstreamname}_${pkgver}_amd64.tar.gz" -C "${pkgname%-*}" --strip-components=1
 }
 
 package() {
@@ -60,7 +49,7 @@ package() {
 	install -Dm 644 "${pkgname%-*}.service" "$pkgdir/usr/lib/systemd/system/${pkgname%-*}.service"
 
 	## Install udev rules
-	install -Dm 644 "${pkgname%-*}/${pkgname%-*}.rules" "$pkgdir/etc/udev/rules.d/${pkgname%-*}.rules"
+	install -bDm 644 "${pkgname%-*}/99-${pkgname%-*}.rules" "$pkgdir/etc/udev/rules.d/99-${pkgname%-*}.rules"
 
 	## Install package executable
 	install -Dm 755 "${pkgname%-*}/$_upstreamname" "$pkgdir$_binlocation"
