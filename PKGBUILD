@@ -3,8 +3,8 @@
 pkgname=openlinkhub-bin
 _upstreamname=OpenLinkHub
 _binlocation=/usr/bin/"${pkgname%-*}"
-_applocation=/opt/"${pkgname%-*}"
-pkgver=0.5.6
+_applocation=/var/lib/"${pkgname%-*}"
+pkgver=0.6.1
 pkgrel=1
 pkgdesc="Open source Linux interface for iCUE LINK Hub and other Corsair AIOs, Hubs. [Current Binary Release - amd64/x86_64]"
 arch=('x86_64')
@@ -28,39 +28,29 @@ source=(
 	"${pkgname%-*}".service
 )
 noextract=("${_upstreamname}_${pkgver}_amd64.tar.gz")
-sha256sums=('43ea0d6a10905ce15696a06f4a6aabe12a65cc0ce1f4a88326b8b939870589eb'
-            'eb4d6d32e69feeb6892ea2f5c0beb12a5abec06383d79fbe308c19c7c9287c85'
-            '5aab700df0d7791722c2723ece369df916e07184407e4778d25a2dd934f12681'
-            '430d8196074127257b6b823d7ae72eaa9fedf90f55c70bc121a9467e7648dcc5')
-
+sha256sums=('216c41840b21a1c64c009c7c5e7f5d6ae95520deb4958dfe0bc1e432abce469f'
+            '0820bcc60c77bd23178f4766f92f01dae2a75ae704ad6ac40ecf598a55002d36'
+            '8c9f747bc6484290cb97b40e5904dc02cce2672e59e0f6ad720a1cd6a7b9d900'
+            'dab02810b18e9d9bc7a20a84394998e492c61a464973be8f49d08a724a94ff09')
 prepare() {
 	mkdir -p "${pkgname%-*}"
 	tar -xzf "${_upstreamname}_${pkgver}_amd64.tar.gz" -C "${pkgname%-*}" --strip-components=1
 }
 
 package() {
-	## Install users
-	install -Dm 644 "${pkgname%-*}.sysusers" "$pkgdir/usr/lib/sysusers.d/${pkgname%-*}.conf"
+	install -bDm 644 "${pkgname%-*}.service" "$pkgdir/usr/lib/systemd/system/${pkgname%-*}.service"
+	install -bDm 644 "${pkgname%-*}.sysusers" "$pkgdir/usr/lib/sysusers.d/${pkgname%-*}.conf"
 
-	## Install folders
-	install -d -m 755 "${pkgdir}$_applocation/"{database,static,web}
-
-	## Install systemd service unit
-	install -Dm 644 "${pkgname%-*}.service" "$pkgdir/usr/lib/systemd/system/${pkgname%-*}.service"
-
-	## Install udev rules
-	install -bDm 644 "${pkgname%-*}/99-${pkgname%-*}.rules" "$pkgdir/etc/udev/rules.d/99-${pkgname%-*}.rules"
-
-	## Install package executable
-	install -Dm 755 "${pkgname%-*}/$_upstreamname" "$pkgdir$_binlocation"
+	install -bDm 644 "${pkgname%-*}.tmpfiles" "$pkgdir/usr/lib/tmpfiles.d/${pkgname%-*}.conf"
+	install -bd -m 755 "${pkgdir}$_applocation/"{database,static,web,api}
+	cp -r "${pkgname%-*}"/database/* "${pkgdir}"$_applocation/database/
+	cp -r "${pkgname%-*}"/static/* "${pkgdir}"$_applocation/static/
+	cp -r "${pkgname%-*}"/web/* "${pkgdir}"$_applocation/web/
+	cp -r "${pkgname%-*}"/api/* "${pkgdir}"$_applocation/api/
 
 	## Install package data
 	cp -r "${pkgname%-*}"/database/* "${pkgdir}"$_applocation/database/
 	cp -r "${pkgname%-*}"/static/* "${pkgdir}"$_applocation/static/
 	cp -r "${pkgname%-*}"/web/* "${pkgdir}"$_applocation/web/
-
-	## Update permissions
-	chmod 755 "${pkgdir}"$_binlocation
-	chmod -R 755 "${pkgdir}"$_applocation
-	chown -R 473:473 "${pkgdir}"$_applocation
+	cp -r "${pkgname%-*}"/api/* "${pkgdir}"$_applocation/api/
 }
